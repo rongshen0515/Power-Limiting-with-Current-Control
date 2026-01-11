@@ -182,6 +182,10 @@ int main(){
                 }else{
                     chassis_power_limit = robot_status.chassis_power_limit;
                 }
+
+                // Prev problem: Computed chassis_power_limit, but did not assign it to the chassis
+                // Pass the referee power limit into the chassis
+                Chassis.power_limit = chassis_power_limit; 
                 
             }
             Chassis.periodic();
