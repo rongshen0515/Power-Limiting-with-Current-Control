@@ -2,6 +2,9 @@
 #include <cmath>
 #include <stdexcept>
 
+/**
+ * @param radius radius in meters
+ */
 
 ChassisSubsystem::ChassisSubsystem(short lfId, short rfId, short lbId, short rbId, BNO055 &imu, double radius)
     : LF(lfId, CAN_BUS_TYPE, MOTOR_TYPE),
@@ -38,9 +41,6 @@ ChassisSubsystem::ChassisSubsystem(short lfId, short rfId, short lbId, short rbI
 
     brakeMode = COAST;
 
-    // NEW limiter defaults already set in header initializers
-    // m_powerScale = 1.0f;
-    // m_kP, m_kI, m_alpha defaulted
 }
 
 WheelSpeeds ChassisSubsystem::getWheelSpeeds() const
@@ -82,7 +82,6 @@ void ChassisSubsystem::updatePowerLimiter(float measuredPower_W, float dt_s)
     m_powerScale = clampf(m_powerScale, 0.0f, 1.0f);
 }
 
-// =========================
 
 float ChassisSubsystem::limitAcceleration(float desiredRPM, float previousRPM, int power)
 {
@@ -141,6 +140,7 @@ float ChassisSubsystem::p_theory(int LeftFrontPower, int RightFrontPower, int Le
     return p_tot_c;
 }
 
+// NOT NEEDED BY THE NEW ALGORITHM
 float ChassisSubsystem::Bisection(int LeftFrontPower, int RightFrontPower, int LeftBackPower, int RightBackPower,
                                   int LeftFrontRpm, int RightFrontRpm, int LeftBackRpm, int RightBackRpm,
                                   float chassisPowerLimit)
@@ -176,6 +176,7 @@ float ChassisSubsystem::Bisection(int LeftFrontPower, int RightFrontPower, int L
         return 1;
     }
 }
+// NOT NEEDED BY THE NEW ALGORITHM BECAUSE I AM TRYING TO USE PID
 
 float ChassisSubsystem::setWheelSpeeds(WheelSpeeds wheelSpeeds)
 {
@@ -193,6 +194,17 @@ float ChassisSubsystem::setWheelSpeeds(WheelSpeeds wheelSpeeds)
     float LBrpm = limitAcceleration(wheelSpeeds.LB, previousRPM[2], powers[2]);
     float RBrpm = limitAcceleration(wheelSpeeds.RB, previousRPM[3], powers[3]);
 
+    // float LFrpm = wheelSpeeds.LF;
+    // float RFrpm = wheelSpeeds.RF;
+    // float LBrpm = wheelSpeeds.LB;
+    // float RBrpm = wheelSpeeds.RB;
+
+    
+    // float LFrpm = limitAcceleration(wheelSpeeds.LF, previousRPM[0], LF.getData(POWEROUT));
+    // float RFrpm = limitAcceleration(wheelSpeeds.RF, previousRPM[1], RF.getData(POWEROUT));
+    // float LBrpm = limitAcceleration(wheelSpeeds.LB, previousRPM[2], LB.getData(POWEROUT));
+    // float RBrpm = limitAcceleration(wheelSpeeds.RB, previousRPM[3], RB.getData(POWEROUT));
+
     previousRPM[0] = LFrpm;
     previousRPM[1] = RFrpm;
     previousRPM[2] = LBrpm;
@@ -208,10 +220,29 @@ float ChassisSubsystem::setWheelSpeeds(WheelSpeeds wheelSpeeds)
     // ==========================
     // NEW: Apply PI power scale
     // ==========================
+
+    int p1 = powers[0];
+    int p2 = powers[1];
+    int p3 = powers[2];
+    int p4 = powers[3];
+
+    int r1 = LF.getData(VELOCITY);
+    int r2 = RF.getData(VELOCITY);
+    int r3 = LB.getData(VELOCITY);
+    int r4 = RB.getData(VELOCITY);
+    
+    //DONT REALLY NEED THIS BUT WILL LEAVE THIS HERE
+    float scale = Bisection(p1, p2, p3, p4, r1, r2, r3, r4, power_limit);
+    
     LF.setPower(powers[0] * m_powerScale);
     RF.setPower(powers[1] * m_powerScale);
     LB.setPower(powers[2] * m_powerScale);
     RB.setPower(powers[3] * m_powerScale);
+
+    p1 = abs(LF.getData(POWEROUT));
+    p2 = abs(RF.getData(POWEROUT));
+    p3 = abs(LB.getData(POWEROUT));
+    p4 = abs(RB.getData(POWEROUT));
 
     return m_powerScale;
 }
@@ -291,7 +322,6 @@ DJIMotor &ChassisSubsystem::getMotor(MotorLocation location)
     case RIGHT_BACK:
         return RB;
     }
-    return LF; // fallback
 }
 
 void ChassisSubsystem::setMotorSpeedPID(MotorLocation location, float kP, float kI, float kD)
