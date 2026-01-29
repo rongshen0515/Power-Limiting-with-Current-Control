@@ -460,7 +460,8 @@ int ChassisSubsystem::motorPIDtoPower(MotorLocation location, double speed, uint
         setSpeedFeedforward(location, 0);
         return 0;
     }
-
+    int power = 0;
+    
     PID *pid = nullptr;
     switch (location)
     {
