@@ -75,27 +75,11 @@ struct OmniKinematicsLimits
     double max_vOmega;
 };
 
-/**
- * The ChassisSubsystem class is a wrapper for the DJIMotor class that allows for easy control of the chassis.
- *
- * The ChassisSubsystem class also contains methods for controlling the chassis with the IMU. The IMU is used to control the
- * chassis in a field-relative manner, and to control the chassis with an offset angle.
- */
 class ChassisSubsystem
 {
 public:
-    /**
-     * The Chassis constructor. This constructor takes in the CAN IDs of the four motors on the chassis.
-     * @param lfId Left front motor CAN ID
-     * @param rfId Right front motor CAN ID
-     * @param lbId Left back motor CAN ID
-     * @param rbId Right back motor CAN ID
-     */
     ChassisSubsystem(short lfId, short rfId, short lbId, short rbId, BNO055 &imu, double radius);
 
-    /**
-     * The BrakeMode enum is used to set the brake mode of the chassis.
-     */
     enum BrakeMode
     {
         BRAKE,
@@ -128,174 +112,73 @@ public:
 
     static float limitAcceleration(float desiredRPM, float previousRPM, int power);
 
-    static float p_theory(int LeftFrontPower, int RightFrontPower, int LeftBackPower, int RightBackPower, int LeftFrontRpm, int RightFrontRpm, int LeftBackRpm, int RightBackRpm);
+    static float p_theory(int LeftFrontPower, int RightFrontPower, int LeftBackPower, int RightBackPower,
+                          int LeftFrontRpm, int RightFrontRpm, int LeftBackRpm, int RightBackRpm);
 
-    static float Bisection(int LeftFrontPower, int RightFrontPower, int LeftBackPower, int RightBackPower, int LeftFrontRpm, int RightFrontRpm, int LeftBackRpm, int RightBackRpm, float chassisPowerLimit);
+    static float Bisection(int LeftFrontPower, int RightFrontPower, int LeftBackPower, int RightBackPower,
+                           int LeftFrontRpm, int RightFrontRpm, int LeftBackRpm, int RightBackRpm,
+                           float chassisPowerLimit);
 
-    float power_limit;
+    float power_limit; 
 
-    /**
-     * Gets the chassis's current WheelSpeeds
-     * @return The chassis's current WheelSpeeds
-     */
+    // ===== NEW: Measured-power PI limiter =====
+    // call this every loop with measured power (Watts) and dt (seconds)
+    void updatePowerLimiter(float measuredPower_W, float dt_s);
+
+    // optional tuning
+    void setPowerLimiterGains(float kP, float kI, float alpha);
+
+    float getPowerScale() const { return m_powerScale; }
+    float getMeasuredPowerFiltered() const { return m_powerFiltered_W; }
+
+    // =========================================
+
     WheelSpeeds getWheelSpeeds() const;
 
-    /**
-     * The setWheelSpeeds method drives each motor at a specific speed
-     * @param wheelSpeeds The speeds in RPM to drive each motor at
-     */
     float setWheelSpeeds(WheelSpeeds wheelSpeeds);
 
-    /**
-     * The normalizeWheelSpeeds method normalizes each motor with respect to m_OmniKinematicsLimits.max_Vel
-     * @param wheelSpeeds The speeds in m/s to drive each motor at
-     */
     WheelSpeeds normalizeWheelSpeeds(WheelSpeeds wheelSpeeds) const;
 
-    /**
-     * The driveMotors method drives each motor at a specific speed
-     * @param wheelPower The speeds in [-1, 1] to drive each motor at
-     */
     void setWheelPower(WheelSpeeds wheelPower);
 
-    /**
-     * Gets the chassis's current ChassisSpeeds from odometry (only velocity state)
-     * @return The chassis's current ChassisSpeeds
-     */
     ChassisSpeeds getChassisSpeeds() const;
 
-    /**
-     * The setChassisSpeeds method is used to drive the chassis in a chassis relative manner.
-     *
-     * @param desiredChassisSpeeds The robot-relative speeds (vX, vY, and vOmega) in m/s
-     */
     float setChassisSpeeds(ChassisSpeeds desiredChassisSpeeds_, DRIVE_MODE mode = ROBOT_ORIENTED);
 
-    /**
-     * The rotateChassisSpeed method
-     *
-     * @param speeds The relative speeds (vX, vY, and vOmega) in m/s
-     * @param yawCurrent The CCW-positive angle in degrees
-     */
     ChassisSpeeds rotateChassisSpeed(ChassisSpeeds speeds, double yawCurrent);
 
-    /**
-     * A helper method to find a DJIMotor object from an index.
-     *
-     * @param location The MotorLocation of the motor (LF, RF, LB, RB)
-     * @return a DJIMotor object
-     */
     DJIMotor &getMotor(MotorLocation location);
 
-    /**
-     * Sets the P, I, and D control parameters
-     * @param location The MotorLocation of the motor (LF, RF, LB, RB)
-     * @param kP The new P (proportional) parameter
-     * @param kI The new I (integral) parameter
-     * @param kD The new D (derivative) parameter
-     */
     void setMotorSpeedPID(MotorLocation location, float kP, float kI, float kD);
 
-    /**
-     * Sets the IntegralCap for the SpeedPID
-     * @param location The MotorLocation of the motor (LF, RF, LB, RB)
-     * @param cap The maximum integral that can be achieved, above which the integral will be capped
-     */
     void setSpeedIntegralCap(MotorLocation location, double cap);
 
-    /**
-     * Sets the Feedforward for the SpeedPID
-     * @param location The MotorLocation of the motor (LF, RF, LB, RB)
-     * @param FF The arbitrary Feedforward value ranges from [-1, 1]
-     */
     void setSpeedFeedforward(MotorLocation location, double FF);
 
-    /**
-     * Sets the Friction Feedforward compensation for the SpeedPID
-     * @param Ks The arbitrary Friction Feedforward Gain in [-1, 1]
-     */
     void setSpeedFF_Ks(double Ks);
 
-    /**
-     * A helper method to find the brake mode of the chassis.
-     *
-     * @return An enum representing the brake mode of the chassis
-     */
     BrakeMode getBrakeMode();
 
-    /**
-     * A helper method to set the brake mode of the chassis.
-     *
-     * @param brakeMode An enum representing the brake mode of the chassis
-     */
     void setBrakeMode(BrakeMode brakeMode);
 
-    /**
-     * A helper method to initialize the IMU.
-     */
     void initializeImu();
 
-    /**
-     * A method that should be run every main loop to update the Chassis's estimated position
-     */
     void periodic();
 
-    /**
-     * Helper method to convert an angle from degrees to radians
-     * @param radians An angle measurement in radians
-     * @return The angle converted to degree
-     */
     static double radiansToDegrees(double radians);
 
-    /**
-     * Helper method to convert an angle from radians to degrees
-     * @param degrees An angle measurement in degrees
-     * @return The angle converted to radians
-     */
     static double degreesToRadians(double degrees);
 
-    /**
-     * Gets the IMU's current angle reading in degrees
-     * @return The IMU's current angle reading in degrees
-     */
     int getHeadingDegrees() const;
 
-    /**
-     * Gets the chassis's current 2D position (TO BE DONE)
-     * @return The chassis's current 2D position
-     */
     Pose2D getPose();
 
-    /**
-     * gets motor speed based on location and speed unit
-     * @return motor speed in selected unit
-     *
-     * @param location location of the motor
-     * @param unit unit of speed
-     */
     double getMotorSpeed(MotorLocation location, SPEED_UNIT unit);
 
-    /**
-     * sets chassis speeds limits
-     *
-     * @param max_Vel maximum linear velocity of chassis
-     * @param max_vOmega maximum angular velocity of chassis
-     */
     void setOmniKinematicsLimits(double max_Vel, double max_vOmega);
 
-    /**
-     * A helper method to read/update the IMU.
-     */
     void readImu();
 
-    /**
-     * Yaw motor is a motor that controls the Turret
-     * yawPhase is an initial offset of your Yaw Motor Angle
-     * (basically which direction you want your Heading to be w.r.t Yaw Motor)
-     * 
-     * @param motor your Yaw Motor reference as in `&{motor_name}`
-     * @param initial_offset_ticks initial offset of your Yaw Motor Angle in ticks (try pass it as double)
-     */
     void setYawReference(DJIMotor *motor, double initial_offset_ticks);
 
     ChassisSpeeds desiredChassisSpeeds;
@@ -308,7 +191,7 @@ public:
 
     ChassisSpeeds m_chassisSpeeds;
     WheelSpeeds m_wheelSpeeds;
-    
+
     int PEAK_POWER_ALL;
     int PEAK_POWER_SINGLE;
 
@@ -319,13 +202,8 @@ public:
 
     uint32_t lastPIDTime = 0;
 
-    // int8_t isInverted[4];
-
     double prevVel;
 
-    /**
-     * yawPhase is an initial offset of your Yaw Motor Angle (basically which direction you want your Heading to be w.r.t Yaw Motor)
-    */
     double yawPhase;
     int testData[300][4];
     int testDataIndex = 0;
@@ -336,11 +214,9 @@ public:
 private:
     DJIMotor LF, RF, LB, RB;
     DJIMotor *yaw = 0;
-    // double yawPhase;
+
     BrakeMode brakeMode;
 
-    // double beybladeSpeed;
-    // bool beybladeIncreasing;
     BNO055 imu;
     BNO055_ANGULAR_POSITION_typedef imuAngles;
 
@@ -350,18 +226,14 @@ private:
     OmniKinematics m_OmniKinematics;
     float chassis_radius;
     void setOmniKinematics(double radius);
-    // Eigen::MatrixXd wheelSpeedsToChassisSpeeds(WheelSpeeds wheelSpeeds);
 
     double FF_Ks;
 
     void setMotorPower(MotorLocation location, double power);
     void setMotorSpeedRPM(MotorLocation location, double speed);
-    // void setMotorSpeedTicksPerSecond(int index, double speed);
-
     double getMotorSpeedRPM(MotorLocation location);
     int motorPIDtoPower(MotorLocation location, double speed, uint32_t dt);
 
-    // ChassisKalman chassisKalman;
     double testAngle;
     int lastTimeMs;
 
@@ -369,6 +241,21 @@ private:
     short rfId;
     short lbId;
     short rbId;
+
+    
+    float m_powerScale = 1.0f;       
+    float m_powerFiltered_W = 0.0f;  
+    float m_powerIntegral = 0.0f;    
+    
+    float m_kP = 0.0025f;
+    float m_kI = 0.0008f;
+    float m_alpha = 0.10f;
+
+    static float clampf(float x, float lo, float hi)
+    {
+        return (x < lo) ? lo : (x > hi) ? hi : x;
+    }
 };
 
 #endif // TR_EMBEDDED_CHASSIS_SUBSYSTEM_H
+
