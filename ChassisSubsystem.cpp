@@ -83,42 +83,33 @@ void ChassisSubsystem::updatePowerLimiter(float measuredPower_W, float dt_s)
 }
 
 
-float ChassisSubsystem::limitAcceleration(float desiredRPM, float previousRPM, int power)
-{
+float ChassisSubsystem::limitAcceleration(float desiredRPM, float previousRPM, int power){
     float maxAccel = 100;
     float diff = desiredRPM - previousRPM;
 
-    if ((desiredRPM > 0 && previousRPM < 0) || (desiredRPM < 0 && previousRPM > 0))
-    {
+    if ((desiredRPM > 0 && previousRPM < 0) || (desiredRPM < 0 && previousRPM > 0)){
         return 0;
     }
 
-    if (diff > maxAccel)
-    {
-        if (power == 0)
-        {
+    if (diff > maxAccel){
+        if (power == 0){
             return desiredRPM;
         }
         return previousRPM + maxAccel;
     }
-    else if (diff < -maxAccel)
-    {
-        if (power == 0)
-        {
+    else if (diff < -maxAccel){
+        if (power == 0){
             return desiredRPM;
         }
         return previousRPM - maxAccel;
     }
-    else
-    {
+    else{
         return desiredRPM;
     }
 }
 
 // ===== old theory functions (kept, not used by new PI limiter) =====
-float ChassisSubsystem::p_theory(int LeftFrontPower, int RightFrontPower, int LeftBackPower, int RightBackPower,
-                                 int LeftFrontRpm, int RightFrontRpm, int LeftBackRpm, int RightBackRpm)
-{
+float ChassisSubsystem::p_theory(int LeftFrontPower, int RightFrontPower, int LeftBackPower, int RightBackPower, int LeftFrontRpm, int RightFrontRpm, int LeftBackRpm, int RightBackRpm){
     float krpm2 = 0.000000000616869908524917;
     float kpwr2 = 2.8873053310419543e-26;
     float kboth = 0.00000000679867734389254;
